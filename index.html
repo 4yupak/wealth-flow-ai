@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WealthFlow</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0A0A0F;
+      --surface: #12121A;
+      --card: #16161F;
+      --card-hover: #1A1A25;
+      --border: #2A2A3A;
+      --accent: #3B82F6;
+      --accent-dim: rgba(59,130,246,0.15);
+      --green: #10B981;
+      --red: #EF4444;
+      --yellow: #F59E0B;
+      --purple: #8B5CF6;
+      --cyan: #06B6D4;
+      --pink: #EC4899;
+      --text: #E2E8F0;
+      --text-dim: #94A3B8;
+      --text-muted: #64748B;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: 80px;
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .6; } }
+    @keyframes scaleIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    .fade-in { animation: fadeIn .4s ease both; }
+    .slide-up { animation: slideUp .4s ease both; }
+
+    /* ===== LAYOUT ===== */
+    .screen { display: none; padding: 16px 16px 24px; }
+    .screen.active { display: block; }
+
+    /* ===== HEADER ===== */
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .header-brand { font-size: 12px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; font-family: 'Space Mono', monospace; }
+    .header-greeting { font-size: 20px; font-weight: 700; margin-top: 2px; }
+
+    .score-ring {
+      width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .score-ring-inner {
+      width: 42px; height: 42px; border-radius: 50%; background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 700; font-family: 'Space Mono', monospace;
+    }
+
+    /* ===== INCOME CARD ===== */
+    .income-card {
+      background: linear-gradient(135deg, rgba(59,130,246,.12), rgba(139,92,246,.08));
+      border: 1px solid rgba(59,130,246,.2);
+      border-radius: 16px; padding: 18px 18px 14px; margin-bottom: 14px;
+    }
+    .income-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .income-value { font-size: 32px; font-weight: 700; font-family: 'Space Mono', monospace; color: var(--green); margin-top: 2px; }
+    .mini-stats { display: flex; gap: 16px; margin-top: 10px; }
+    .mini-stat-value { font-size: 16px; font-weight: 700; font-family: 'Space Mono', monospace; }
+    .mini-stat-label { font-size: 10px; color: var(--text-muted); }
+
+    /* ===== HUNT CTA ===== */
+    .hunt-cta {
+      width: 100%; padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+      background: linear-gradient(135deg, rgba(245,158,11,.1), rgba(239,68,68,.08));
+      border: 1px solid rgba(245,158,11,.25); border-radius: 14px;
+      cursor: pointer; margin-bottom: 18px; transition: transform .15s;
+    }
+    .hunt-cta:active { transform: scale(.98); }
+    .hunt-cta-icon { font-size: 26px; animation: pulse 2s infinite; }
+    .hunt-cta-title { font-weight: 600; font-size: 14px; color: var(--text); }
+    .hunt-cta-desc { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+    .hunt-cta-arrow { margin-left: auto; font-size: 16px; color: var(--text-muted); }
+
+    /* ===== HYPOTHESIS CARD ===== */
+    .hyp-card {
+      width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      margin-bottom: 8px; cursor: pointer; transition: all .15s; text-align: left;
+    }
+    .hyp-card:active { transform: scale(.98); background: var(--card-hover); }
+    .hyp-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .hyp-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hyp-meta { display: flex; gap: 6px; margin-top: 3px; align-items: center; }
+    .hyp-badge { font-size: 10px; padding: 1px 7px; border-radius: 5px; font-weight: 600; }
+    .hyp-income { font-size: 14px; font-weight: 700; font-family: 'Space Mono', monospace; text-align: right; }
+    .hyp-income-label { font-size: 9px; color: var(--text-muted); text-align: right; }
+
+    /* ===== SECTIONS ===== */
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .section-title { font-size: 15px; font-weight: 600; }
+    .btn-primary {
+      background: var(--accent); color: #fff; border: none; border-radius: 8px;
+      padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .btn-primary:active { opacity: .85; }
+
+    /* ===== CATEGORY CARDS ===== */
+    .cat-card {
+      width: 100%; display: flex; align-items: center; gap: 14px; padding: 14px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      margin-bottom: 8px; cursor: pointer; transition: all .15s; text-align: left;
+    }
+    .cat-card:active { transform: scale(.98); }
+    .cat-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+    .cat-name { font-weight: 600; font-size: 14px; }
+    .cat-desc { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+
+    /* ===== HUNT QUESTION ===== */
+    .question-box {
+      border-radius: 16px; padding: 18px; margin-bottom: 16px;
+    }
+    .question-text { font-size: 15px; font-weight: 600; line-height: 1.5; }
+    .progress-bar { display: flex; gap: 4px; margin-bottom: 20px; }
+    .progress-dot { flex: 1; height: 3px; border-radius: 2px; background: var(--border); transition: background .3s; }
+    .progress-dot.active { background: var(--yellow); }
+
+    /* ===== INPUTS ===== */
+    textarea, input[type=text], input[type=number] {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--text);
+      font-family: inherit; outline: none; resize: vertical;
+    }
+    textarea:focus, input:focus { border-color: rgba(59,130,246,.4); }
+
+    .btn-full {
+      width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none;
+      border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: opacity .15s;
+    }
+    .btn-full:active { opacity: .85; }
+    .btn-full:disabled { opacity: .4; }
+
+    /* ===== HYPOTHESIS DETAIL ===== */
+    .detail-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+    .detail-title { font-size: 17px; font-weight: 700; line-height: 1.3; }
+    .detail-badges { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+
+    .metrics-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .metric-box {
+      flex: 1; background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px; text-align: center;
+    }
+    .metric-value { font-size: 16px; font-weight: 700; font-family: 'Space Mono', monospace; }
+    .metric-label { font-size: 9px; color: var(--text-muted); margin-top: 1px; }
+    .metric-value[contenteditable] { cursor: text; outline: none; min-width: 40px; }
+
+    .stage-selector { display: flex; gap: 4px; margin-bottom: 14px; overflow-x: auto; }
+    .stage-btn {
+      padding: 5px 10px; border-radius: 8px; font-size: 10px; font-weight: 600;
+      border: 1px solid var(--border); background: var(--card); color: var(--text-muted);
+      cursor: pointer; white-space: nowrap; font-family: inherit; transition: all .15s;
+    }
+    .stage-btn.active { border-color: currentColor; }
+
+    .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+    .tab-btn {
+      padding: 9px 14px; background: none; border: none; border-bottom: 2px solid transparent;
+      color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: all .2s;
+    }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+    /* ===== TASKS ===== */
+    .task-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; }
+    .task-check {
+      width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0;
+      border: 2px solid var(--border); display: flex; align-items: center;
+      justify-content: center; cursor: pointer; font-size: 11px; color: #fff;
+      transition: all .15s;
+    }
+    .task-check.done { background: var(--green); border-color: var(--green); }
+    .task-text { font-size: 13px; }
+    .task-text.done { color: var(--text-muted); text-decoration: line-through; }
+
+    /* ===== AI CHAT ===== */
+    .ai-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .ai-btn {
+      flex: 1; min-width: 90px; padding: 9px 12px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 10px; cursor: pointer;
+      text-align: left; font-family: inherit; color: var(--text); transition: all .15s;
+    }
+    .ai-btn:active { border-color: rgba(59,130,246,.4); }
+    .ai-btn-label { font-size: 13px; }
+    .ai-btn-desc { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+    .ai-msg {
+      padding: 11px 13px; margin-bottom: 6px; border-radius: 12px;
+      font-size: 13px; line-height: 1.6; white-space: pre-wrap;
+    }
+    .ai-msg.user { background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.2); }
+    .ai-msg.assistant { background: var(--card); border: 1px solid var(--border); }
+    .ai-msg-role { font-size: 10px; color: var(--text-muted); margin-bottom: 3px; }
+
+    /* ===== ANALYTICS ===== */
+    .analytics-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px; margin-bottom: 12px;
+    }
+    .analytics-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .bar-icon { font-size: 14px; width: 24px; text-align: center; }
+    .bar-label { font-size: 11px; color: var(--text-dim); width: 70px; }
+    .bar-track { flex: 1; height: 18px; border-radius: 5px; background: var(--border); position: relative; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 5px; transition: width .5s ease; }
+    .bar-count { position: absolute; left: 7px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 600; }
+    .bar-amount { font-size: 10px; font-family: 'Space Mono', monospace; color: var(--text-dim); width: 55px; text-align: right; }
+
+    .income-bar-row { margin-bottom: 9px; }
+    .income-bar-header { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .income-bar-name { font-size: 11px; }
+    .income-bar-val { font-size: 11px; font-weight: 600; font-family: 'Space Mono', monospace; color: var(--green); }
+    .income-bar-track { height: 7px; border-radius: 4px; background: var(--border); }
+    .income-bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; }
+    .income-bar-detail { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    .ai-rec {
+      background: linear-gradient(135deg, rgba(139,92,246,.08), rgba(59,130,246,.05));
+      border: 1px solid rgba(139,92,246,.2); border-radius: 14px; padding: 14px;
+    }
+    .ai-rec-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .ai-rec-text { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+
+    /* ===== BOTTOM NAV ===== */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface); border-top: 1px solid var(--border);
+      display: flex; padding: 6px 0 env(safe-area-inset-bottom, 12px);
+      z-index: 100;
+    }
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      gap: 1px; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 10px; font-family: inherit;
+      padding: 4px 0; transition: color .2s;
+    }
+    .nav-btn.active { color: var(--accent); }
+    .nav-btn-icon { font-size: 20px; }
+
+    .back-btn {
+      background: none; border: none; color: var(--accent); font-size: 13px;
+      font-weight: 600; cursor: pointer; padding: 0; font-family: inherit; margin-bottom: 8px;
+    }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200;
+      display: flex; align-items: flex-end; justify-content: center;
+    }
+    .modal-content {
+      width: 100%; max-width: 430px; background: var(--surface);
+      border-radius: 20px 20px 0 0; padding: 22px 18px 36px;
+      animation: slideUp .3s ease;
+    }
+    .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+
+    .cat-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 16px; }
+    .cat-chip {
+      padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 600;
+      border: 1px solid var(--border); background: var(--card); color: var(--text-muted);
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    .cat-chip.active { border-color: currentColor; }
+
+    .loading { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 14px; }
+    .loading-spinner { animation: pulse 1.5s infinite; font-size: 32px; margin-bottom: 12px; }
+
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<!-- ===== LOADING ===== -->
+<div id="loading" class="loading">
+  <div class="loading-spinner">💰</div>
+  <div>Загрузка WealthFlow...</div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div id="screen-dashboard" class="screen">
+  <div class="header fade-in">
+    <div>
+      <div class="header-brand">WealthFlow</div>
+      <div class="header-greeting" id="greeting">Привет 👋</div>
+    </div>
+    <div class="score-ring" id="score-ring">
+      <div class="score-ring-inner" id="score-value">0</div>
+    </div>
+  </div>
+
+  <div class="income-card fade-in" style="animation-delay:.05s">
+    <div class="income-label">Общий доход / месяц</div>
+    <div class="income-value" id="total-income">$0</div>
+    <div class="mini-stats">
+      <div><div class="mini-stat-value" id="active-count">0</div><div class="mini-stat-label">Активных</div></div>
+      <div><div class="mini-stat-value" id="hyp-count">0</div><div class="mini-stat-label">Гипотез</div></div>
+      <div><div class="mini-stat-value" id="avg-roi">$0</div><div class="mini-stat-label">$/час</div></div>
+    </div>
+  </div>
+
+  <div class="hunt-cta fade-in" style="animation-delay:.1s" onclick="showScreen('hunt')">
+    <span class="hunt-cta-icon">🎯</span>
+    <div>
+      <div class="hunt-cta-title">Время охоты за деньгами</div>
+      <div class="hunt-cta-desc">AI задаст вопросы, ты найдёшь новый источник</div>
+    </div>
+    <span class="hunt-cta-arrow">→</span>
+  </div>
+
+  <div class="section-header fade-in" style="animation-delay:.15s">
+    <div class="section-title">Мои источники</div>
+    <button class="btn-primary" onclick="openNewModal()">+ Новый</button>
+  </div>
+
+  <div id="hypotheses-list"></div>
+</div>
+
+<!-- ===== HUNT ===== -->
+<div id="screen-hunt" class="screen">
+  <button class="back-btn" onclick="showScreen('dashboard')">← Назад</button>
+  <div id="hunt-content"></div>
+</div>
+
+<!-- ===== HYPOTHESIS DETAIL ===== -->
+<div id="screen-detail" class="screen">
+  <button class="back-btn" onclick="showScreen('dashboard')">← Назад</button>
+  <div id="detail-content"></div>
+</div>
+
+<!-- ===== ANALYTICS ===== -->
+<div id="screen-analytics" class="screen">
+  <button class="back-btn" onclick="showScreen('dashboard')">← Назад</button>
+  <div style="font-size:20px;font-weight:700;margin-bottom:16px">📊 Аналитика</div>
+  <div id="analytics-content"></div>
+</div>
+
+<!-- ===== MODAL ===== -->
+<div id="new-modal" class="modal-overlay" style="display:none" onclick="closeNewModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-title">💡 Новая гипотеза</div>
+    <input type="text" id="new-hyp-title" placeholder="Название источника дохода..." style="margin-bottom:14px">
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px">Категория:</div>
+    <div class="cat-chips" id="cat-chips"></div>
+    <button class="btn-full" onclick="createHypothesis()" id="create-btn" disabled>Создать гипотезу →</button>
+  </div>
+</div>
+
+<!-- ===== BOTTOM NAV ===== -->
+<div class="bottom-nav">
+  <button class="nav-btn active" id="nav-dashboard" onclick="showScreen('dashboard')">
+    <span class="nav-btn-icon">◉</span><span>Главная</span>
+  </button>
+  <button class="nav-btn" id="nav-hunt" onclick="showScreen('hunt')">
+    <span class="nav-btn-icon">🎯</span><span>Охота</span>
+  </button>
+  <button class="nav-btn" id="nav-analytics" onclick="showScreen('analytics')">
+    <span class="nav-btn-icon">📊</span><span>Аналитика</span>
+  </button>
+</div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const API_BASE = 'https://n8n.ibgtechnology.in/webhook/wealthflow';
+
+const CATEGORIES = [
+  { id: 1, slug: 'above_level', name: 'Выше уровня', icon: '🚀', color: '#F59E0B', desc: 'Нестандартные способы заработать кратно больше' },
+  { id: 2, slug: 'below_level', name: 'Ниже уровня', icon: '⚡', color: '#10B981', desc: 'Простые, быстрые, массовые источники' },
+  { id: 3, slug: 'add_zero', name: 'Приписать ноль', icon: '🔥', color: '#EF4444', desc: 'Масштабирование того, что уже есть' },
+  { id: 4, slug: 'instant_cash', name: 'Ближайший час', icon: '⏱️', color: '#8B5CF6', desc: 'Моментальный кэш прямо сейчас' },
+  { id: 5, slug: 'from_zero', name: 'С нуля', icon: '🌱', color: '#06B6D4', desc: 'Стратегия старта без ресурсов' },
+  { id: 6, slug: 'unicorn', name: 'Единорог', icon: '🦄', color: '#EC4899', desc: 'План на $100M+' },
+];
+
+const STAGES = [
+  { id: 'idea', name: 'Идея', icon: '💡', color: '#94A3B8' },
+  { id: 'prep', name: 'Подготовка', icon: '📋', color: '#F59E0B' },
+  { id: 'test', name: 'Тест', icon: '🧪', color: '#8B5CF6' },
+  { id: 'growth', name: 'Рост', icon: '📈', color: '#10B981' },
+  { id: 'eval', name: 'Оценка', icon: '⚖️', color: '#EF4444' },
+];
+
+const QUESTIONS = {
+  1: ['Что ты умеешь делать, за что люди платили бы в 10 раз больше твоей текущей ставки?','Кто из твоего окружения зарабатывает в 5+ раз больше тебя? Что он делает иначе?','Если бы тебе запретили работать руками — только управлять — что бы ты построил?'],
+  2: ['Какой навык у тебя есть, который можно продать за $50–200 прямо сейчас?','Что ты делаешь бесплатно для друзей, за что другие платят деньги?','Какой шаблон или инструмент ты создал для себя, который можно продать?'],
+  3: ['Какой твой текущий источник дохода можно увеличить в 10 раз без найма людей?','Что мешает твоему лучшему источнику приносить в 3 раза больше?','Напиши 10 способов приписать ноль к текущему доходу, не меняя продукт.'],
+  4: ['Кому ты можешь позвонить прямо сейчас и предложить услугу за $500?','Что из того, что у тебя уже есть, можно продать сегодня?','Какой результат ты можешь дать клиенту за 1 час работы?'],
+  5: ['Если бы ты потерял всё завтра — какие 3 шага ты бы сделал в первый день?','С каким минимальным бюджетом можно запустить бизнес в твоей нише?','Какой бизнес можно начать с телефона и $0?'],
+  6: ['Какой бизнес в твоей сфере может стать компанией на $1B?','Сколько агентов нужно для $100M выручки? Как их привлечь?','Какая технология может disrupt твою индустрию в ближайшие 5 лет?'],
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let tgUser = null;
+let appUser = null;
+let hypotheses = [];
+let currentHypId = null;
+let huntCategoryId = null;
+let huntQuestionIdx = 0;
+let newHypCatId = 1;
+let aiMessages = {};
+
+// Demo data for standalone testing
+const DEMO_HYPOTHESES = [
+  { id: 'h1', title: 'Реферальная программа 30% за клиентов', category_id: 1, stage: 'growth', income_type: 'active', monthly_income: 5400, monthly_hours: 10, notes: 'Передача клиентов. $12K за виллу, $5.4K за квартиру.', tasks: [{ id:'t1', text:'Договориться с 5 партнёрами', done:true },{ id:'t2', text:'Создать шаблон договора', done:true },{ id:'t3', text:'Запустить автоматизацию в amoCRM', done:true },{ id:'t4', text:'Масштабировать на Bali', done:false }] },
+  { id: 'h2', title: 'Академия IBG — курс для агентов', category_id: 2, stage: 'prep', income_type: 'passive', monthly_income: 500, monthly_hours: 20, notes: 'Продажа обучения через блог. $100 за модуль.', tasks: [{ id:'t5', text:'Записать 3 модуля', done:true },{ id:'t6', text:'Сделать лендинг', done:false },{ id:'t7', text:'Настроить автоворонку', done:false }] },
+  { id: 'h3', title: 'Франшиза для агентов по недвижимости', category_id: 3, stage: 'idea', income_type: 'passive', monthly_income: 0, monthly_hours: 0, notes: 'Упаковать систему IBG в франшизу.', tasks: [{ id:'t8', text:'Описать бизнес-модель', done:false },{ id:'t9', text:'Посчитать unit-экономику', done:false }] },
+  { id: 'h4', title: 'Reels для агентов — продакшн', category_id: 3, stage: 'test', income_type: 'active', monthly_income: 2000, monthly_hours: 15, notes: '33 рилса по $60 = $2000.', tasks: [{ id:'t10', text:'Снять пилотные 5 рилсов', done:true },{ id:'t11', text:'Запустить на 10 агентов', done:false }] },
+  { id: 'h5', title: 'Мобильное приложение WealthFlow', category_id: 1, stage: 'idea', income_type: 'passive', monthly_income: 0, monthly_hours: 0, notes: 'SaaS для агентств недвижимости.', tasks: [{ id:'t12', text:'Написать спек', done:true },{ id:'t13', text:'Собрать прототип', done:false }] },
+];
+
+// ============================================================
+// TELEGRAM INIT
+// ============================================================
+function initApp() {
+  const tg = window.Telegram?.WebApp;
+
+  if (tg && tg.initDataUnsafe?.user) {
+    tg.ready();
+    tg.expand();
+    tg.setHeaderColor('#0A0A0F');
+    tg.setBackgroundColor('#0A0A0F');
+
+    tgUser = tg.initDataUnsafe.user;
+    authenticate(tg.initData);
+  } else {
+    // Standalone mode (для тестирования)
+    tgUser = { id: 0, first_name: 'Юра', last_name: 'Pak', username: 'yurypak', language_code: 'ru' };
+    hypotheses = DEMO_HYPOTHESES;
+    appUser = { id: 'demo', telegram_id: 0, first_name: 'Юра' };
+    hideLoading();
+    renderDashboard();
+  }
+}
+
+async function authenticate(initData) {
+  if (!API_BASE) {
+    // No backend — use demo
+    hypotheses = DEMO_HYPOTHESES;
+    appUser = { id: 'demo', telegram_id: tgUser.id, first_name: tgUser.first_name };
+    hideLoading();
+    renderDashboard();
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData })
+    });
+    const data = await res.json();
+    appUser = data.user;
+    hypotheses = data.hypotheses || [];
+    hideLoading();
+    renderDashboard();
+  } catch (e) {
+    console.error('Auth error:', e);
+    hypotheses = DEMO_HYPOTHESES;
+    appUser = { id: 'demo', telegram_id: tgUser.id, first_name: tgUser.first_name };
+    hideLoading();
+    renderDashboard();
+  }
+}
+
+function hideLoading() {
+  document.getElementById('loading').style.display = 'none';
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+let currentScreen = 'dashboard';
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+  const screenEl = document.getElementById(`screen-${name}`);
+  if (screenEl) {
+    screenEl.classList.add('active');
+    screenEl.style.animation = 'none';
+    screenEl.offsetHeight; // reflow
+    screenEl.style.animation = 'fadeIn .3s ease';
+  }
+
+  const navBtn = document.getElementById(`nav-${name}`);
+  if (navBtn) navBtn.classList.add('active');
+
+  currentScreen = name;
+
+  if (name === 'dashboard') renderDashboard();
+  else if (name === 'hunt') renderHunt();
+  else if (name === 'analytics') renderAnalytics();
+
+  window.scrollTo(0, 0);
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard() {
+  const firstName = tgUser?.first_name || 'Друг';
+  document.getElementById('greeting').textContent = `Привет, ${firstName} 👋`;
+
+  const totalIncome = hypotheses.reduce((s, h) => s + (h.monthly_income || 0), 0);
+  const activeCount = hypotheses.filter(h => h.stage !== 'idea' && h.monthly_income > 0).length;
+  const withHours = hypotheses.filter(h => (h.monthly_hours || 0) > 0);
+  const avgROI = withHours.length ? Math.round(withHours.reduce((s, h) => s + h.monthly_income / h.monthly_hours, 0) / withHours.length) : 0;
+
+  const score = calcScore();
+
+  document.getElementById('total-income').textContent = `$${totalIncome.toLocaleString()}`;
+  document.getElementById('active-count').textContent = activeCount;
+  document.getElementById('hyp-count').textContent = hypotheses.length;
+  document.getElementById('avg-roi').textContent = `$${avgROI}`;
+  document.getElementById('score-value').textContent = score;
+
+  const ring = document.getElementById('score-ring');
+  ring.style.background = `conic-gradient(var(--accent) ${score * 3.6}deg, var(--border) 0deg)`;
+
+  const list = document.getElementById('hypotheses-list');
+  list.innerHTML = hypotheses.map((h, i) => {
+    const cat = CATEGORIES.find(c => c.id === h.category_id) || CATEGORIES[0];
+    const stage = STAGES.find(s => s.id === h.stage) || STAGES[0];
+    const doneTasks = (h.tasks || []).filter(t => t.done).length;
+    const totalTasks = (h.tasks || []).length;
+
+    return `<div class="hyp-card slide-up" style="animation-delay:${i * .04}s" onclick="openHypothesis('${h.id}')">
+      <div class="hyp-icon" style="background:${cat.color}20">${cat.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div class="hyp-title">${h.title}</div>
+        <div class="hyp-meta">
+          <span class="hyp-badge" style="background:${stage.color}20;color:${stage.color}">${stage.name}</span>
+          <span style="font-size:10px;color:var(--text-muted)">${h.income_type === 'passive' ? '🔄 Пассив' : '💪 Актив'}</span>
+          ${totalTasks > 0 ? `<span style="font-size:10px;color:var(--text-muted)">✓ ${doneTasks}/${totalTasks}</span>` : ''}
+        </div>
+      </div>
+      <div>
+        <div class="hyp-income" style="color:${h.monthly_income > 0 ? 'var(--green)' : 'var(--text-muted)'}">${h.monthly_income > 0 ? '$' + h.monthly_income.toLocaleString() : '—'}</div>
+        <div class="hyp-income-label">/мес</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function calcScore() {
+  const activeCount = hypotheses.filter(h => h.stage !== 'idea' && h.monthly_income > 0).length;
+  const totalIncome = hypotheses.reduce((s, h) => s + (h.monthly_income || 0), 0);
+  const tasksCompleted = hypotheses.reduce((s, h) => s + (h.tasks || []).filter(t => t.done).length, 0);
+  return Math.min(100, hypotheses.length * 8 + activeCount * 15 + tasksCompleted * 3 + (totalIncome > 0 ? 20 : 0));
+}
+
+// ============================================================
+// HYPOTHESIS DETAIL
+// ============================================================
+function openHypothesis(id) {
+  currentHypId = id;
+  showScreen('detail');
+  renderDetail();
+}
+
+function getHyp() {
+  return hypotheses.find(h => h.id === currentHypId);
+}
+
+let detailTab = 'tasks';
+
+function renderDetail() {
+  const h = getHyp();
+  if (!h) return;
+
+  const cat = CATEGORIES.find(c => c.id === h.category_id) || CATEGORIES[0];
+  const stage = STAGES.find(s => s.id === h.stage) || STAGES[0];
+  const roi = h.monthly_hours > 0 ? Math.round(h.monthly_income / h.monthly_hours) : 0;
+  const roiColor = roi >= 100 ? 'var(--green)' : roi >= 30 ? 'var(--yellow)' : 'var(--red)';
+  const msgs = aiMessages[h.id] || [];
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-header fade-in">
+      <div class="hyp-icon" style="background:${cat.color}20;width:44px;height:44px;font-size:22px">${cat.icon}</div>
+      <div style="flex:1">
+        <div class="detail-title">${h.title}</div>
+        <div class="detail-badges">
+          <span class="hyp-badge" style="background:${stage.color}20;color:${stage.color}">${stage.name}</span>
+          <span class="hyp-badge" style="background:var(--border);color:var(--text-dim)">${h.income_type === 'passive' ? '🔄 Пассив' : '💪 Актив'}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="metrics-row fade-in" style="animation-delay:.05s">
+      <div class="metric-box">
+        <div class="metric-value" style="color:var(--green)" contenteditable onblur="updateIncome(this)">${h.monthly_income}</div>
+        <div class="metric-label">$/мес</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-value" style="color:var(--yellow)" contenteditable onblur="updateHours(this)">${h.monthly_hours}</div>
+        <div class="metric-label">ч/мес</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-value" style="color:${roiColor}">$${roi}</div>
+        <div class="metric-label">$/час</div>
+      </div>
+    </div>
+
+    <div class="stage-selector fade-in" style="animation-delay:.1s">
+      ${STAGES.map(s => `<button class="stage-btn ${h.stage === s.id ? 'active' : ''}" style="${h.stage === s.id ? `background:${s.color}18;border-color:${s.color}55;color:${s.color}` : ''}" onclick="changeStage('${s.id}')">${s.icon} ${s.name}</button>`).join('')}
+    </div>
+
+    <div class="tabs fade-in" style="animation-delay:.12s">
+      <button class="tab-btn ${detailTab === 'tasks' ? 'active' : ''}" onclick="switchTab('tasks')">Задачи</button>
+      <button class="tab-btn ${detailTab === 'ai' ? 'active' : ''}" onclick="switchTab('ai')">AI-помощник</button>
+      <button class="tab-btn ${detailTab === 'notes' ? 'active' : ''}" onclick="switchTab('notes')">Заметки</button>
+    </div>
+
+    <div id="tab-content" class="fade-in" style="animation-delay:.15s">
+      ${detailTab === 'tasks' ? renderTasks(h) : detailTab === 'ai' ? renderAI(h, msgs) : renderNotes(h)}
+    </div>
+  `;
+}
+
+function renderTasks(h) {
+  const tasks = h.tasks || [];
+  return `
+    ${tasks.map((t, i) => `
+      <div class="task-item">
+        <div class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask(${i})">${t.done ? '✓' : ''}</div>
+        <span class="task-text ${t.done ? 'done' : ''}">${t.text}</span>
+      </div>
+    `).join('')}
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <input type="text" id="new-task-input" placeholder="+ Новая задача..." onkeydown="if(event.key==='Enter')addTask()">
+    </div>
+  `;
+}
+
+function renderAI(h, msgs) {
+  return `
+    <div class="ai-actions">
+      <div class="ai-btn" onclick="sendAI('pitch')"><div class="ai-btn-label">🎤 Питч</div><div class="ai-btn-desc">Сгенерировать</div></div>
+      <div class="ai-btn" onclick="sendAI('scale')"><div class="ai-btn-label">📈 Масштаб</div><div class="ai-btn-desc">Как расти</div></div>
+      <div class="ai-btn" onclick="sendAI('analyze')"><div class="ai-btn-label">🔍 Анализ</div><div class="ai-btn-desc">Оценка ROI</div></div>
+    </div>
+    <div id="ai-chat">
+      ${msgs.length === 0 ? '<div class="empty-state">Нажми кнопку — AI проанализирует гипотезу</div>' : ''}
+      ${msgs.map(m => `
+        <div class="ai-msg ${m.role}">
+          <div class="ai-msg-role">${m.role === 'user' ? 'Ты' : '🤖 WealthGPT'}</div>
+          ${m.content}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderNotes(h) {
+  return `<textarea style="min-height:180px" onblur="updateNotes(this)">${h.notes || ''}</textarea>`;
+}
+
+function switchTab(tab) {
+  detailTab = tab;
+  renderDetail();
+}
+
+function toggleTask(idx) {
+  const h = getHyp();
+  if (h?.tasks?.[idx]) {
+    h.tasks[idx].done = !h.tasks[idx].done;
+    saveHypothesis(h);
+    renderDetail();
+  }
+}
+
+function addTask() {
+  const input = document.getElementById('new-task-input');
+  const text = input?.value.trim();
+  if (!text) return;
+  const h = getHyp();
+  if (!h) return;
+  if (!h.tasks) h.tasks = [];
+  h.tasks.push({ id: 't' + Date.now(), text, done: false });
+  saveHypothesis(h);
+  renderDetail();
+}
+
+function changeStage(stageId) {
+  const h = getHyp();
+  if (!h) return;
+  h.stage = stageId;
+  saveHypothesis(h);
+  renderDetail();
+}
+
+function updateIncome(el) {
+  const h = getHyp();
+  if (!h) return;
+  h.monthly_income = parseFloat(el.textContent) || 0;
+  saveHypothesis(h);
+  renderDetail();
+}
+
+function updateHours(el) {
+  const h = getHyp();
+  if (!h) return;
+  h.monthly_hours = parseFloat(el.textContent) || 0;
+  saveHypothesis(h);
+  renderDetail();
+}
+
+function updateNotes(el) {
+  const h = getHyp();
+  if (!h) return;
+  h.notes = el.value;
+  saveHypothesis(h);
+}
+
+async function sendAI(action) {
+  const h = getHyp();
+  if (!h) return;
+
+  if (!aiMessages[h.id]) aiMessages[h.id] = [];
+
+  const labels = { pitch: 'Сгенерируй питч', scale: 'Как масштабировать?', analyze: 'Проанализируй гипотезу' };
+  aiMessages[h.id].push({ role: 'user', content: labels[action] || action });
+
+  // Try n8n backend
+  if (API_BASE) {
+    try {
+      const res = await fetch(`${API_BASE}/ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hypothesis_id: h.id, action, context: { title: h.title, stage: h.stage, income: h.monthly_income, hours: h.monthly_hours, income_type: h.income_type } })
+      });
+      const data = await res.json();
+      aiMessages[h.id].push({ role: 'assistant', content: data.response });
+      renderDetail();
+      return;
+    } catch (e) { console.error('AI error:', e); }
+  }
+
+  // Fallback: local responses
+  const responses = {
+    pitch: `Elevator Pitch для «${h.title}»:\n\nМы помогаем [целевая аудитория] решить [проблему] с помощью [решения].\n\nВ отличие от конкурентов, наш подход [уникальность].\nРезультат — [измеримая выгода].\n\n💡 Адаптируй под свою гипотезу и протестируй на 3 людях сегодня.`,
+    scale: `3 стратегии масштабирования «${h.title}»:\n\n1. 🌍 Горизонталь — тот же продукт, новая география\n2. 📦 Вертикаль — больше услуг текущим клиентам\n3. 🤖 Автоматизация — убрать себя через n8n + AI\n\nТекущий ROI: $${h.monthly_hours > 0 ? Math.round(h.monthly_income / h.monthly_hours) : '?'}/час\n\n${h.monthly_income > 0 ? 'Эта гипотеза уже приносит деньги — фокус на масштабе.' : 'Сначала протестируй и получи первые $100.'}`,
+    analyze: `Анализ «${h.title}»:\n\n📊 Доход: $${h.monthly_income}/мес\n⏱ Время: ${h.monthly_hours}ч/мес\n💰 ROI: $${h.monthly_hours > 0 ? Math.round(h.monthly_income / h.monthly_hours) : 0}/час\n\n${h.monthly_hours > 0 && h.monthly_income / h.monthly_hours < 30 ? '⚠️ ROI ниже $30/час — рассмотри автоматизацию или делегирование.' : '✅ ROI хороший — ищи способы масштабировать.'}\n\nРекомендация: ${h.stage === 'idea' ? 'Протестируй за 48 часов' : h.stage === 'test' ? 'Получи 3 платящих клиента' : 'Ищи способ приписать ноль'}`,
+  };
+
+  aiMessages[h.id].push({ role: 'assistant', content: responses[action] || 'Расскажи подробнее о гипотезе.' });
+  renderDetail();
+}
+
+// ============================================================
+// HUNT
+// ============================================================
+function renderHunt() {
+  const content = document.getElementById('hunt-content');
+
+  if (!huntCategoryId) {
+    content.innerHTML = `
+      <div style="font-size:20px;font-weight:700;margin-bottom:3px">🎯 Охота за деньгами</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:20px">Выбери категорию — AI задаст провокационные вопросы</div>
+      ${CATEGORIES.map(c => `
+        <div class="cat-card" onclick="startHunt(${c.id})">
+          <div class="cat-icon" style="background:${c.color}20">${c.icon}</div>
+          <div><div class="cat-name">${c.name}</div><div class="cat-desc">${c.desc}</div></div>
+        </div>
+      `).join('')}
+    `;
+  } else {
+    const cat = CATEGORIES.find(c => c.id === huntCategoryId);
+    const questions = QUESTIONS[huntCategoryId] || [];
+    const q = questions[huntQuestionIdx];
+    const isLast = huntQuestionIdx >= questions.length - 1;
+
+    content.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div class="cat-icon" style="background:${cat.color}20;width:38px;height:38px;font-size:18px;border-radius:10px;display:flex;align-items:center;justify-content:center">${cat.icon}</div>
+        <div>
+          <div style="font-weight:600;font-size:15px">${cat.name}</div>
+          <div style="font-size:10px;color:var(--text-muted)">Вопрос ${huntQuestionIdx + 1} из ${questions.length}</div>
+        </div>
+        <button class="back-btn" style="margin-left:auto;margin-bottom:0" onclick="huntCategoryId=null;renderHunt()">✕</button>
+      </div>
+
+      <div class="progress-bar">
+        ${questions.map((_, i) => `<div class="progress-dot ${i <= huntQuestionIdx ? 'active' : ''}" style="${i <= huntQuestionIdx ? `background:${cat.color}` : ''}"></div>`).join('')}
+      </div>
+
+      ${q ? `
+        <div class="question-box" style="background:${cat.color}10;border:1px solid ${cat.color}25">
+          <div class="question-text">${q}</div>
+        </div>
+        <textarea id="hunt-answer" rows="4" placeholder="Твой ответ..."></textarea>
+
+        <div style="margin-top:12px">
+          ${!isLast ? `
+            <button class="btn-full" onclick="nextHuntQuestion()">Следующий вопрос →</button>
+          ` : `
+            <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">Отлично! Запиши гипотезу:</div>
+            <input type="text" id="hunt-new-title" placeholder="Название нового источника дохода..." style="margin-bottom:10px">
+            <button class="btn-full" onclick="createFromHunt()">💡 Создать гипотезу</button>
+          `}
+        </div>
+      ` : ''}
+    `;
+  }
+}
+
+function startHunt(catId) {
+  huntCategoryId = catId;
+  huntQuestionIdx = 0;
+  renderHunt();
+}
+
+function nextHuntQuestion() {
+  huntQuestionIdx++;
+  renderHunt();
+}
+
+function createFromHunt() {
+  const input = document.getElementById('hunt-new-title');
+  const title = input?.value.trim();
+  if (!title) return;
+
+  const newH = {
+    id: 'h' + Date.now(),
+    title,
+    category_id: huntCategoryId,
+    stage: 'idea',
+    income_type: 'active',
+    monthly_income: 0,
+    monthly_hours: 0,
+    notes: '',
+    tasks: [],
+  };
+  hypotheses.push(newH);
+  saveHypothesis(newH, true);
+  huntCategoryId = null;
+  huntQuestionIdx = 0;
+  openHypothesis(newH.id);
+}
+
+// ============================================================
+// NEW HYPOTHESIS MODAL
+// ============================================================
+function openNewModal() {
+  document.getElementById('new-modal').style.display = 'flex';
+  document.getElementById('new-hyp-title').value = '';
+  newHypCatId = 1;
+  renderCatChips();
+  document.getElementById('new-hyp-title').focus();
+
+  document.getElementById('new-hyp-title').oninput = function() {
+    document.getElementById('create-btn').disabled = !this.value.trim();
+  };
+}
+
+function closeNewModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('new-modal').style.display = 'none';
+}
+
+function renderCatChips() {
+  document.getElementById('cat-chips').innerHTML = CATEGORIES.map(c =>
+    `<button class="cat-chip ${newHypCatId === c.id ? 'active' : ''}" style="${newHypCatId === c.id ? `background:${c.color}18;border-color:${c.color}55;color:${c.color}` : ''}" onclick="newHypCatId=${c.id};renderCatChips()">${c.icon} ${c.name}</button>`
+  ).join('');
+}
+
+function createHypothesis() {
+  const title = document.getElementById('new-hyp-title').value.trim();
+  if (!title) return;
+
+  const newH = {
+    id: 'h' + Date.now(),
+    title,
+    category_id: newHypCatId,
+    stage: 'idea',
+    income_type: 'active',
+    monthly_income: 0,
+    monthly_hours: 0,
+    notes: '',
+    tasks: [],
+  };
+  hypotheses.push(newH);
+  saveHypothesis(newH, true);
+  document.getElementById('new-modal').style.display = 'none';
+  openHypothesis(newH.id);
+}
+
+// ============================================================
+// ANALYTICS
+// ============================================================
+function renderAnalytics() {
+  const totalIncome = hypotheses.reduce((s, h) => s + (h.monthly_income || 0), 0);
+  const passiveIncome = hypotheses.filter(h => h.income_type === 'passive').reduce((s, h) => s + (h.monthly_income || 0), 0);
+  const activeIncome = hypotheses.filter(h => h.income_type === 'active').reduce((s, h) => s + (h.monthly_income || 0), 0);
+  const maxIncome = Math.max(...hypotheses.map(h => h.monthly_income || 0), 1);
+
+  const byStage = STAGES.map(s => ({
+    ...s,
+    count: hypotheses.filter(h => h.stage === s.id).length,
+    income: hypotheses.filter(h => h.stage === s.id).reduce((sum, h) => sum + (h.monthly_income || 0), 0),
+  }));
+
+  const activeH = hypotheses.filter(h => (h.monthly_income || 0) > 0).sort((a, b) => b.monthly_income - a.monthly_income);
+
+  const content = document.getElementById('analytics-content');
+  content.innerHTML = `
+    <!-- Active vs Passive -->
+    <div class="analytics-card fade-in">
+      <div class="analytics-title">Активы vs Пассивы</div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:11px;color:var(--text-dim)">💪 Активный</span>
+            <span style="font-size:11px;font-weight:600;font-family:'Space Mono'">$${activeIncome.toLocaleString()}</span>
+          </div>
+          <div style="height:6px;border-radius:3px;background:var(--border)">
+            <div style="height:100%;border-radius:3px;background:var(--accent);width:${totalIncome > 0 ? (activeIncome/totalIncome)*100 : 0}%;transition:width .5s"></div>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:11px;color:var(--text-dim)">🔄 Пассивный</span>
+            <span style="font-size:11px;font-weight:600;font-family:'Space Mono'">$${passiveIncome.toLocaleString()}</span>
+          </div>
+          <div style="height:6px;border-radius:3px;background:var(--border)">
+            <div style="height:100%;border-radius:3px;background:var(--green);width:${totalIncome > 0 ? (passiveIncome/totalIncome)*100 : 0}%;transition:width .5s"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Funnel -->
+    <div class="analytics-card fade-in" style="animation-delay:.05s">
+      <div class="analytics-title">Воронка гипотез</div>
+      ${byStage.map(s => `
+        <div class="bar-row">
+          <span class="bar-icon">${s.icon}</span>
+          <span class="bar-label">${s.name}</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="background:${s.color}55;width:${hypotheses.length > 0 ? (s.count/hypotheses.length)*100 : 0}%"></div>
+            <span class="bar-count">${s.count}</span>
+          </div>
+          <span class="bar-amount">$${s.income.toLocaleString()}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- Income by source -->
+    <div class="analytics-card fade-in" style="animation-delay:.1s">
+      <div class="analytics-title">Источники по доходу</div>
+      ${activeH.length > 0 ? activeH.map(h => {
+        const cat = CATEGORIES.find(c => c.id === h.category_id) || CATEGORIES[0];
+        return `<div class="income-bar-row">
+          <div class="income-bar-header">
+            <span class="income-bar-name">${cat.icon} ${h.title.length > 28 ? h.title.slice(0,28) + '…' : h.title}</span>
+            <span class="income-bar-val">$${h.monthly_income.toLocaleString()}</span>
+          </div>
+          <div class="income-bar-track">
+            <div class="income-bar-fill" style="background:linear-gradient(90deg,${cat.color},${cat.color}88);width:${(h.monthly_income/maxIncome)*100}%"></div>
+          </div>
+          ${h.monthly_hours > 0 ? `<div class="income-bar-detail">${h.monthly_hours}ч/мес • $${Math.round(h.monthly_income/h.monthly_hours)}/час</div>` : ''}
+        </div>`;
+      }).join('') : '<div class="empty-state">Пока нет источников с доходом</div>'}
+    </div>
+
+    <!-- AI Recommendation -->
+    <div class="ai-rec fade-in" style="animation-delay:.15s">
+      <div class="ai-rec-title">🤖 Рекомендация AI</div>
+      <div class="ai-rec-text">
+        ${activeH.length > 0 ? `
+          <strong style="color:var(--green)">Масштабируй:</strong> «${activeH[0].title}» — лучший доход.<br>
+          ${hypotheses.filter(h => h.stage === 'idea').length > 1 ? `<strong style="color:var(--yellow)">Протестируй:</strong> ${hypotheses.filter(h => h.stage === 'idea').length} гипотез в стадии «Идея». Выбери одну на эту неделю.<br>` : ''}
+          ${passiveIncome < activeIncome * .3 ? `<strong style="color:var(--purple)">Баланс:</strong> Пассивный доход — ${Math.round(passiveIncome/Math.max(totalIncome,1)*100)}%. Добавь пассивные источники.` : ''}
+        ` : 'Добавляй источники и метрики — дам рекомендации на данных.'}
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// PERSISTENCE (n8n or localStorage fallback)
+// ============================================================
+async function saveHypothesis(h, isNew = false) {
+  // Save locally
+  localStorage.setItem('wf_hypotheses', JSON.stringify(hypotheses));
+
+  // Sync to n8n if available
+  if (API_BASE) {
+    try {
+      await fetch(`${API_BASE}/hypothesis`, {
+        method: isNew ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...h, user_id: appUser?.id })
+      });
+    } catch (e) { console.error('Save error:', e); }
+  }
+}
+
+function loadLocalData() {
+  try {
+    const saved = localStorage.getItem('wf_hypotheses');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.length > 0) hypotheses = parsed;
+    }
+  } catch (e) {}
+}
+
+// ============================================================
+// INIT
+// ============================================================
+loadLocalData();
+initApp();
+</script>
+</body>
+</html>
